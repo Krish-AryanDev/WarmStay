@@ -6,10 +6,38 @@
   color-scheme: light;
 }
 
-html, body {
+html,
+body {
   height: 100%;
 }
 
 body {
   @apply bg-slate-50 text-slate-900 antialiased;
+  -webkit-tap-highlight-color: transparent;
+  text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Prevent iOS Safari from zooming when focusing inputs (font-size must be >= 16px) */
+input,
+select,
+textarea {
+  font-size: 16px;
+}
+
+@media (min-width: 640px) {
+  input,
+  select,
+  textarea {
+    font-size: 14px;
+  }
+}
+
+/* Hide scrollbars on horizontal photo scroller while keeping it scrollable */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
 }

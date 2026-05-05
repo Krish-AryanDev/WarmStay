@@ -27,11 +27,12 @@ export default async function InquiryPage({
   if (!pg) notFound();
 
   return (
-    <div className="mx-auto max-w-xl space-y-4">
+    <div className="mx-auto max-w-xl space-y-5">
       <div>
-        <h1 className="text-2xl font-bold">Check availability</h1>
-        <p className="text-slate-500">
-          Inquiry for <span className="font-medium text-slate-900">{pg.name}</span>
+        <h1 className="text-2xl font-bold leading-tight sm:text-3xl">Check availability</h1>
+        <p className="mt-1 text-sm text-slate-500 sm:text-base">
+          Inquiry for{" "}
+          <span className="font-medium text-slate-900">{pg.name}</span>
         </p>
       </div>
       <InquiryForm
