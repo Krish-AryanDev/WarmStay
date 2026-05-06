@@ -46,11 +46,18 @@ create table if not exists inquiries (
   budget          integer,
   room_preference text,
   notes           text,
+  handled         boolean not null default false,
+  handled_at      timestamptz,
   created_at      timestamptz not null default now()
 );
 
+-- Migration for existing deployments (safe to re-run).
+alter table inquiries add column if not exists handled boolean not null default false;
+alter table inquiries add column if not exists handled_at timestamptz;
+
 create index if not exists inquiries_pg_idx on inquiries (pg_id);
 create index if not exists inquiries_created_idx on inquiries (created_at desc);
+create index if not exists inquiries_handled_idx on inquiries (handled);
 
 alter table inquiries enable row level security;
 

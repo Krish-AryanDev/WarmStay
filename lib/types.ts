@@ -19,6 +19,21 @@ export interface Amenities {
   warden?: boolean;
 }
 
+export interface Inquiry {
+  id: string;
+  pg_id: string | null;
+  pg_slug: string | null;
+  student_name: string;
+  student_phone: string;
+  move_in_date: string | null;
+  budget: number | null;
+  room_preference: string | null;
+  notes: string | null;
+  handled: boolean;
+  handled_at: string | null;
+  created_at: string;
+}
+
 export interface PG {
   id: string;
   slug: string;
