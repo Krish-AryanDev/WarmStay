@@ -18,9 +18,13 @@ create table if not exists pgs (
   amenities     jsonb not null default '{}'::jsonb,
   room_types    jsonb not null default '[]'::jsonb,
   photos        jsonb not null default '[]'::jsonb,
+  videos        jsonb not null default '[]'::jsonb,
   is_active     boolean not null default true,
   created_at    timestamptz not null default now()
 );
+
+-- Migration for existing deployments (safe to re-run).
+alter table pgs add column if not exists videos jsonb not null default '[]'::jsonb;
 
 create index if not exists pgs_active_idx on pgs (is_active);
 create index if not exists pgs_gender_idx on pgs (gender);
@@ -72,3 +76,10 @@ create policy "anyone can submit inquiry"
 insert into storage.buckets (id, name, public)
 values ('pg-photos', 'pg-photos', true)
 on conflict (id) do nothing;
+
+-- Storage bucket for PG videos. Public read for <video> playback; writes happen
+-- via short-lived signed upload URLs issued by the admin server action.
+-- file_size_limit is in bytes (100 MB).
+insert into storage.buckets (id, name, public, file_size_limit)
+values ('pg-videos', 'pg-videos', true, 104857600)
+on conflict (id) do update set file_size_limit = excluded.file_size_limit;

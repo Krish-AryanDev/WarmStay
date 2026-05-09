@@ -85,8 +85,8 @@ export default async function PGDetail({
         </div>
       </div>
 
-      {/* PHOTOS */}
-      <PhotoGallery photos={pg.photos} pgName={pg.name} />
+      {/* PHOTOS + VIDEOS */}
+      <PhotoGallery photos={pg.photos} videos={pg.videos ?? []} pgName={pg.name} />
 
       {/* MOBILE-ONLY: header block (UNCHANGED) */}
       <div className="flex flex-col gap-4 sm:hidden">

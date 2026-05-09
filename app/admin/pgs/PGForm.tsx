@@ -2,13 +2,18 @@
 
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import type { PG, RoomType, RoomTypeEntry } from "@/lib/types";
+import { supabase } from "@/lib/supabase";
 import {
   createPg,
+  createVideoUploadUrl,
   deletePgPhotoFile,
+  deletePgVideoFile,
   updatePg,
   uploadPgPhoto,
   type PgFormState
 } from "./actions";
+
+const VIDEO_BUCKET = "pg-videos";
 
 interface Props {
   mode: "create" | "edit";
@@ -58,6 +63,11 @@ export default function PGForm({ mode, pg }: Props) {
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [uploading, startUpload] = useTransition();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [videos, setVideos] = useState<string[]>(pg?.videos ?? []);
+  const [videoError, setVideoError] = useState<string | null>(null);
+  const [videoProgress, setVideoProgress] = useState<number | null>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
 
   const [rooms, setRooms] = useState<RoomTypeEntry[]>(
     pg?.room_types?.length
@@ -114,6 +124,57 @@ export default function PGForm({ mode, pg }: Props) {
     });
   }
 
+  async function handleVideoPick(file: File) {
+    setVideoError(null);
+    setVideoProgress(0);
+    try {
+      const fd = new FormData();
+      fd.append("mimeType", file.type);
+      fd.append("size", String(file.size));
+      const issued = await createVideoUploadUrl(fd);
+      if (!issued.ok) {
+        setVideoError(issued.error);
+        setVideoProgress(null);
+        return;
+      }
+
+      const { error: uploadError } = await supabase.storage
+        .from(VIDEO_BUCKET)
+        .uploadToSignedUrl(issued.path, issued.token, file, { contentType: file.type });
+
+      if (uploadError) {
+        console.error("[handleVideoPick] upload failed:", uploadError.message);
+        setVideoError("Upload failed. Try again.");
+        setVideoProgress(null);
+        return;
+      }
+
+      setVideos((prev) => [...prev, issued.publicUrl]);
+      setVideoProgress(null);
+    } catch (err) {
+      console.error("[handleVideoPick] unexpected:", err);
+      setVideoError("Something went wrong during upload.");
+      setVideoProgress(null);
+    }
+  }
+
+  async function handleRemoveVideo(url: string) {
+    setVideos((prev) => prev.filter((u) => u !== url));
+    const fd = new FormData();
+    fd.append("url", url);
+    void deletePgVideoFile(fd);
+  }
+
+  function moveVideo(idx: number, dir: -1 | 1) {
+    setVideos((prev) => {
+      const next = [...prev];
+      const target = idx + dir;
+      if (target < 0 || target >= next.length) return prev;
+      [next[idx], next[target]] = [next[target], next[idx]];
+      return next;
+    });
+  }
+
   function updateRoom(idx: number, patch: Partial<RoomTypeEntry>) {
     setRooms((prev) => prev.map((r, i) => (i === idx ? { ...r, ...patch } : r)));
   }
@@ -142,6 +203,7 @@ export default function PGForm({ mode, pg }: Props) {
     <form action={formAction} className="space-y-8">
       {pg && <input type="hidden" name="id" value={pg.id} />}
       <input type="hidden" name="photos" value={JSON.stringify(photos)} />
+      <input type="hidden" name="videos" value={JSON.stringify(videos)} />
       <input type="hidden" name="room_types" value={JSON.stringify(rooms)} />
       <input type="hidden" name="custom_amenities" value={JSON.stringify(customAmenities)} />
 
@@ -484,6 +546,79 @@ export default function PGForm({ mode, pg }: Props) {
         )}
       </Section>
 
+      {/* Videos */}
+      <Section title="Videos" fullWidth>
+        <p className="mb-3 text-xs text-slate-500">
+          Optional walkthrough clips. MP4 / WebM / MOV, up to 100 MB each. Uploads go directly to
+          storage so larger files are fine — just slower.
+        </p>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          {videos.map((url, idx) => (
+            <div
+              key={url}
+              className="group relative aspect-video overflow-hidden rounded-xl border border-slate-200 bg-slate-900"
+            >
+              <video
+                src={url}
+                controls
+                playsInline
+                preload="metadata"
+                className="h-full w-full object-cover"
+              />
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-between gap-1 bg-gradient-to-t from-black/80 to-transparent p-2 opacity-0 transition group-hover:opacity-100 group-hover:[&>*]:pointer-events-auto">
+                <div className="flex gap-1">
+                  <button
+                    type="button"
+                    onClick={() => moveVideo(idx, -1)}
+                    disabled={idx === 0}
+                    className="rounded-md bg-white/90 px-1.5 py-0.5 text-xs font-medium text-slate-800 disabled:opacity-40"
+                    aria-label="Move left"
+                  >
+                    ←
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => moveVideo(idx, 1)}
+                    disabled={idx === videos.length - 1}
+                    className="rounded-md bg-white/90 px-1.5 py-0.5 text-xs font-medium text-slate-800 disabled:opacity-40"
+                    aria-label="Move right"
+                  >
+                    →
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleRemoveVideo(url)}
+                  className="rounded-md bg-red-500/95 px-2 py-0.5 text-xs font-semibold text-white"
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+          ))}
+
+          <label className="relative flex aspect-video cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 bg-white text-center text-sm text-slate-600 hover:border-brand hover:text-brand">
+            <input
+              ref={videoInputRef}
+              type="file"
+              accept="video/mp4,video/webm,video/quicktime"
+              className="hidden"
+              disabled={videoProgress !== null}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void handleVideoPick(file);
+                if (videoInputRef.current) videoInputRef.current.value = "";
+              }}
+            />
+            <span className="text-2xl leading-none">▶</span>
+            <span className="font-medium">
+              {videoProgress !== null ? "Uploading…" : "Add video"}
+            </span>
+          </label>
+        </div>
+        {videoError && <p className="mt-2 text-sm text-red-600">{videoError}</p>}
+      </Section>
+
       {/* Publish toggle + submit */}
       <div className="flex flex-col items-stretch gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
         <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
@@ -500,7 +635,7 @@ export default function PGForm({ mode, pg }: Props) {
         </label>
         <button
           type="submit"
-          disabled={isPending || uploading}
+          disabled={isPending || uploading || videoProgress !== null}
           className="rounded-xl bg-brand px-6 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-brand-dark disabled:opacity-60"
         >
           {isPending

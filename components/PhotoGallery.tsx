@@ -1,24 +1,35 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 interface Props {
   photos: string[];
+  videos?: string[];
   pgName: string;
 }
 
-export default function PhotoGallery({ photos, pgName }: Props) {
+type MediaItem = { type: "photo" | "video"; url: string };
+
+export default function PhotoGallery({ photos, videos = [], pgName }: Props) {
+  const media = useMemo<MediaItem[]>(
+    () => [
+      ...photos.map((url) => ({ type: "photo" as const, url })),
+      ...videos.map((url) => ({ type: "video" as const, url }))
+    ],
+    [photos, videos]
+  );
+
   const [openAt, setOpenAt] = useState<number | null>(null);
   const isOpen = openAt !== null;
 
   const close = useCallback(() => setOpenAt(null), []);
   const next = useCallback(
-    () => setOpenAt((i) => (i === null ? null : (i + 1) % photos.length)),
-    [photos.length]
+    () => setOpenAt((i) => (i === null ? null : (i + 1) % media.length)),
+    [media.length]
   );
   const prev = useCallback(
-    () => setOpenAt((i) => (i === null ? null : (i - 1 + photos.length) % photos.length)),
-    [photos.length]
+    () => setOpenAt((i) => (i === null ? null : (i - 1 + media.length) % media.length)),
+    [media.length]
   );
 
   useEffect(() => {
@@ -37,70 +48,68 @@ export default function PhotoGallery({ photos, pgName }: Props) {
     };
   }, [isOpen, close, next, prev]);
 
-  if (photos.length === 0) {
+  if (media.length === 0) {
     return (
       <div className="grid aspect-[16/9] place-items-center rounded-2xl bg-slate-100 text-slate-400">
-        No photos yet
+        No photos or videos yet
       </div>
     );
   }
+
+  const remaining = media.length - 5;
+  const activeItem = openAt !== null ? media[openAt] : null;
 
   return (
     <>
       {/* MOBILE: horizontal scroll */}
       <div className="scrollbar-hide -mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 sm:hidden">
-        {photos.map((url, i) => (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+        {media.map((item, i) => (
+          <Thumb
             key={i}
-            src={url}
-            alt={`${pgName} photo ${i + 1}`}
+            item={item}
+            label={`${pgName} ${item.type} ${i + 1}`}
             onClick={() => setOpenAt(i)}
-            className="aspect-[4/3] w-[88%] flex-none cursor-pointer snap-center rounded-2xl object-cover"
+            className="aspect-[4/3] w-[88%] flex-none snap-center rounded-2xl"
           />
         ))}
       </div>
 
-      {/* DESKTOP: Airbnb-style hero gallery — 1 large + up to 4 thumbs */}
+      {/* DESKTOP: Airbnb-style hero — 1 large + up to 4 thumbs */}
       <div className="relative hidden h-[420px] grid-cols-4 grid-rows-2 gap-2 overflow-hidden rounded-2xl sm:grid lg:h-[480px]">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={photos[0]}
-          alt={`${pgName} photo 1`}
+        <Thumb
+          item={media[0]}
+          label={`${pgName} ${media[0].type} 1`}
           onClick={() => setOpenAt(0)}
-          className="col-span-2 row-span-2 h-full w-full cursor-pointer object-cover transition hover:brightness-95"
+          className="col-span-2 row-span-2"
         />
-        {photos.slice(1, 5).map((url, i) => (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+        {media.slice(1, 5).map((item, i) => (
+          <Thumb
             key={i}
-            src={url}
-            alt={`${pgName} photo ${i + 2}`}
+            item={item}
+            label={`${pgName} ${item.type} ${i + 2}`}
             onClick={() => setOpenAt(i + 1)}
-            className="h-full w-full cursor-pointer object-cover transition hover:brightness-95"
           />
         ))}
-        {photos.length > 5 && (
+        {remaining > 0 && (
           <button
             type="button"
             onClick={() => setOpenAt(5)}
             className="absolute bottom-4 right-4 rounded-full bg-white/95 px-4 py-2 text-sm font-semibold text-slate-900 shadow-md backdrop-blur transition hover:bg-white"
           >
-            + {photos.length - 5} photos
+            + {remaining} more
           </button>
         )}
       </div>
 
       {/* LIGHTBOX */}
-      {isOpen && (
+      {isOpen && activeItem && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm"
           role="dialog"
           aria-modal="true"
-          aria-label={`${pgName} photo viewer`}
+          aria-label={`${pgName} media viewer`}
           onClick={close}
         >
-          {/* Close */}
           <button
             type="button"
             onClick={(e) => {
@@ -122,20 +131,18 @@ export default function PhotoGallery({ photos, pgName }: Props) {
             </svg>
           </button>
 
-          {/* Counter */}
           <div className="absolute left-1/2 top-4 z-10 -translate-x-1/2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-medium text-white backdrop-blur">
-            {openAt + 1} / {photos.length}
+            {openAt + 1} / {media.length}
           </div>
 
-          {/* Prev */}
-          {photos.length > 1 && (
+          {media.length > 1 && (
             <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 prev();
               }}
-              aria-label="Previous photo"
+              aria-label="Previous"
               className="absolute left-2 z-10 flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20 sm:left-6"
             >
               <svg
@@ -151,15 +158,14 @@ export default function PhotoGallery({ photos, pgName }: Props) {
             </button>
           )}
 
-          {/* Next */}
-          {photos.length > 1 && (
+          {media.length > 1 && (
             <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 next();
               }}
-              aria-label="Next photo"
+              aria-label="Next"
               className="absolute right-2 z-10 flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20 sm:right-6"
             >
               <svg
@@ -175,16 +181,78 @@ export default function PhotoGallery({ photos, pgName }: Props) {
             </button>
           )}
 
-          {/* Active image */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={photos[openAt]}
-            alt={`${pgName} photo ${openAt + 1}`}
-            onClick={(e) => e.stopPropagation()}
-            className="max-h-[92vh] max-w-[94vw] cursor-default rounded-lg object-contain shadow-2xl"
-          />
+          {activeItem.type === "photo" ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              key={activeItem.url}
+              src={activeItem.url}
+              alt={`${pgName} photo ${openAt + 1}`}
+              onClick={(e) => e.stopPropagation()}
+              className="max-h-[92vh] max-w-[94vw] cursor-default rounded-lg object-contain shadow-2xl"
+            />
+          ) : (
+            <video
+              key={activeItem.url}
+              src={activeItem.url}
+              controls
+              autoPlay
+              playsInline
+              onClick={(e) => e.stopPropagation()}
+              className="max-h-[92vh] max-w-[94vw] cursor-default rounded-lg shadow-2xl"
+            />
+          )}
         </div>
       )}
     </>
+  );
+}
+
+function Thumb({
+  item,
+  label,
+  onClick,
+  className = ""
+}: {
+  item: MediaItem;
+  label: string;
+  onClick: () => void;
+  className?: string;
+}) {
+  const baseClass = `relative h-full w-full cursor-pointer overflow-hidden ${className}`;
+
+  if (item.type === "photo") {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={item.url}
+        alt={label}
+        onClick={onClick}
+        className={`${baseClass} object-cover transition hover:brightness-95`}
+      />
+    );
+  }
+
+  return (
+    <div onClick={onClick} className={`${baseClass} bg-slate-900 transition hover:brightness-95`}>
+      <video
+        src={item.url}
+        muted
+        playsInline
+        preload="metadata"
+        className="h-full w-full object-cover"
+      />
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-black/60 backdrop-blur-sm ring-2 ring-white/80">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="white"
+            className="ml-0.5 h-6 w-6"
+          >
+            <path d="M8 5.14v13.72a1 1 0 0 0 1.55.83l11-6.86a1 1 0 0 0 0-1.66l-11-6.86A1 1 0 0 0 8 5.14Z" />
+          </svg>
+        </div>
+      </div>
+    </div>
   );
 }

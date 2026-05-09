@@ -7,9 +7,12 @@ import { isAdminAuthed } from "@/lib/admin-session";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import type { Amenities, Gender, RoomTypeEntry } from "@/lib/types";
 
-const BUCKET = "pg-photos";
+const PHOTO_BUCKET = "pg-photos";
+const VIDEO_BUCKET = "pg-videos";
 const MAX_PHOTO_BYTES = 8 * 1024 * 1024;
+const MAX_VIDEO_BYTES = 100 * 1024 * 1024;
 const ALLOWED_PHOTO_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const ALLOWED_VIDEO_TYPES = new Set(["video/mp4", "video/webm", "video/quicktime"]);
 
 const AMENITY_KEYS: (keyof Amenities)[] = [
   "wifi",
@@ -29,6 +32,10 @@ export type PgFormState = {
 
 export type PhotoUploadResult =
   | { ok: true; url: string }
+  | { ok: false; error: string };
+
+export type VideoUploadUrlResult =
+  | { ok: true; path: string; token: string; publicUrl: string }
   | { ok: false; error: string };
 
 async function requireAdmin(): Promise<void> {
@@ -71,7 +78,7 @@ function parseRoomTypes(raw: string): RoomTypeEntry[] | null {
   return out;
 }
 
-function parsePhotoUrls(raw: string): string[] | null {
+function parseUrlList(raw: string): string[] | null {
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
@@ -125,8 +132,8 @@ function readGender(value: unknown): Gender | null {
   return null;
 }
 
-function extractStoragePath(publicUrl: string): string | null {
-  const marker = `/storage/v1/object/public/${BUCKET}/`;
+function extractStoragePath(publicUrl: string, bucket: string): string | null {
+  const marker = `/storage/v1/object/public/${bucket}/`;
   const i = publicUrl.indexOf(marker);
   if (i === -1) return null;
   return publicUrl.slice(i + marker.length);
@@ -169,8 +176,11 @@ function buildPgPayload(form: FormData): { payload: Record<string, unknown> | nu
   const room_types = parseRoomTypes(String(form.get("room_types") ?? ""));
   if (!room_types) return { payload: null, error: "Add at least one valid room type." };
 
-  const photos = parsePhotoUrls(String(form.get("photos") ?? "[]"));
+  const photos = parseUrlList(String(form.get("photos") ?? "[]"));
   if (!photos) return { payload: null, error: "Photo list is malformed." };
+
+  const videos = parseUrlList(String(form.get("videos") ?? "[]"));
+  if (!videos) return { payload: null, error: "Video list is malformed." };
 
   const amenities = readAmenities(form);
   const is_active = form.get("is_active") === "on";
@@ -190,6 +200,7 @@ function buildPgPayload(form: FormData): { payload: Record<string, unknown> | nu
       amenities,
       room_types,
       photos,
+      videos,
       is_active
     }
   };
@@ -214,7 +225,7 @@ export async function uploadPgPhoto(formData: FormData): Promise<PhotoUploadResu
   const buf = Buffer.from(await file.arrayBuffer());
 
   const { error: uploadError } = await supabaseAdmin.storage
-    .from(BUCKET)
+    .from(PHOTO_BUCKET)
     .upload(path, buf, {
       contentType: file.type,
       cacheControl: "31536000",
@@ -226,17 +237,65 @@ export async function uploadPgPhoto(formData: FormData): Promise<PhotoUploadResu
     return { ok: false, error: "Upload failed. Try again." };
   }
 
-  const { data } = supabaseAdmin.storage.from(BUCKET).getPublicUrl(path);
+  const { data } = supabaseAdmin.storage.from(PHOTO_BUCKET).getPublicUrl(path);
   return { ok: true, url: data.publicUrl };
 }
 
 export async function deletePgPhotoFile(formData: FormData): Promise<{ ok: boolean }> {
   await requireAdmin();
   const url = String(formData.get("url") ?? "");
-  const path = extractStoragePath(url);
+  const path = extractStoragePath(url, PHOTO_BUCKET);
   if (!path) return { ok: false };
-  const { error } = await supabaseAdmin.storage.from(BUCKET).remove([path]);
+  const { error } = await supabaseAdmin.storage.from(PHOTO_BUCKET).remove([path]);
   if (error) console.error("[deletePgPhotoFile] storage error:", error.message);
+  return { ok: !error };
+}
+
+// Videos are uploaded directly browser → Supabase via a short-lived signed URL.
+// The server only issues the upload token (so we don't proxy 100MB files through
+// a serverless function), validates declared MIME type & size client-hint, and
+// stores the resulting public URL on form submit.
+export async function createVideoUploadUrl(formData: FormData): Promise<VideoUploadUrlResult> {
+  await requireAdmin();
+
+  const mimeType = String(formData.get("mimeType") ?? "");
+  const sizeRaw = Number(formData.get("size") ?? 0);
+
+  if (!ALLOWED_VIDEO_TYPES.has(mimeType)) {
+    return { ok: false, error: "Only MP4, WebM, or MOV videos allowed." };
+  }
+  if (!Number.isFinite(sizeRaw) || sizeRaw <= 0) {
+    return { ok: false, error: "Invalid file size." };
+  }
+  if (sizeRaw > MAX_VIDEO_BYTES) {
+    return { ok: false, error: `Video too large (max ${MAX_VIDEO_BYTES / 1024 / 1024} MB).` };
+  }
+
+  const ext =
+    mimeType === "video/webm" ? "webm" : mimeType === "video/quicktime" ? "mov" : "mp4";
+  const path = `${new Date().getUTCFullYear()}/${randomUUID()}.${ext}`;
+
+  const { data, error } = await supabaseAdmin.storage
+    .from(VIDEO_BUCKET)
+    .createSignedUploadUrl(path);
+
+  if (error || !data) {
+    console.error("[createVideoUploadUrl] storage error:", error?.message);
+    return { ok: false, error: "Could not initiate upload. Try again." };
+  }
+
+  const { data: pub } = supabaseAdmin.storage.from(VIDEO_BUCKET).getPublicUrl(path);
+
+  return { ok: true, path: data.path, token: data.token, publicUrl: pub.publicUrl };
+}
+
+export async function deletePgVideoFile(formData: FormData): Promise<{ ok: boolean }> {
+  await requireAdmin();
+  const url = String(formData.get("url") ?? "");
+  const path = extractStoragePath(url, VIDEO_BUCKET);
+  if (!path) return { ok: false };
+  const { error } = await supabaseAdmin.storage.from(VIDEO_BUCKET).remove([path]);
+  if (error) console.error("[deletePgVideoFile] storage error:", error.message);
   return { ok: !error };
 }
 
@@ -310,12 +369,18 @@ export async function deletePg(formData: FormData): Promise<void> {
 
   const { data: existing } = await supabaseAdmin
     .from("pgs")
-    .select("photos, slug")
+    .select("photos, videos, slug")
     .eq("id", id)
     .maybeSingle();
 
   const photos = (existing?.photos as string[] | null) ?? [];
-  const paths = photos.map(extractStoragePath).filter((p): p is string => !!p);
+  const videos = (existing?.videos as string[] | null) ?? [];
+  const photoPaths = photos
+    .map((u) => extractStoragePath(u, PHOTO_BUCKET))
+    .filter((p): p is string => !!p);
+  const videoPaths = videos
+    .map((u) => extractStoragePath(u, VIDEO_BUCKET))
+    .filter((p): p is string => !!p);
 
   const { error: deleteError } = await supabaseAdmin.from("pgs").delete().eq("id", id);
   if (deleteError) {
@@ -323,9 +388,17 @@ export async function deletePg(formData: FormData): Promise<void> {
     throw new Error("Could not delete PG.");
   }
 
-  if (paths.length > 0) {
-    const { error: storageError } = await supabaseAdmin.storage.from(BUCKET).remove(paths);
-    if (storageError) console.error("[deletePg] storage cleanup:", storageError.message);
+  if (photoPaths.length > 0) {
+    const { error: storageError } = await supabaseAdmin.storage
+      .from(PHOTO_BUCKET)
+      .remove(photoPaths);
+    if (storageError) console.error("[deletePg] photo cleanup:", storageError.message);
+  }
+  if (videoPaths.length > 0) {
+    const { error: storageError } = await supabaseAdmin.storage
+      .from(VIDEO_BUCKET)
+      .remove(videoPaths);
+    if (storageError) console.error("[deletePg] video cleanup:", storageError.message);
   }
 
   revalidatePath("/admin/pgs");

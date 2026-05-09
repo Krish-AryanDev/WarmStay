@@ -49,6 +49,7 @@ export interface PG {
   amenities: Amenities;
   room_types: RoomTypeEntry[];
   photos: string[];
+  videos: string[];
   is_active: boolean;
   created_at: string;
 }
