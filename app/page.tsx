@@ -37,7 +37,7 @@ async function fetchPGs(params: SearchParams): Promise<PG[]> {
   // Room-type filter is JSONB-side; do it in JS (small N).
   if (params.room && ["single", "double", "triple"].includes(params.room)) {
     const want = params.room as RoomType;
-    pgs = pgs.filter((pg) => pg.room_types?.some((r) => r.type === want && r.available > 0));
+    pgs = pgs.filter((pg) => pg.room_types?.some((r) => r.type === want));
   }
 
   return pgs;

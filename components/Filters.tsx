@@ -12,10 +12,10 @@ const GENDERS = [
 
 const PRICES = [
   { value: "", label: "Any price" },
-  { value: "7000", label: "Under ₹7,000" },
-  { value: "9000", label: "Under ₹9,000" },
-  { value: "12000", label: "Under ₹12,000" },
-  { value: "15000", label: "Under ₹15,000" }
+  { value: "85000", label: "Under ₹85,000" },
+  { value: "110000", label: "Under ₹1,10,000" },
+  { value: "140000", label: "Under ₹1,40,000" },
+  { value: "180000", label: "Under ₹1,80,000" }
 ];
 
 const ROOMS = [

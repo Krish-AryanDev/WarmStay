@@ -62,7 +62,7 @@ export default function PGForm({ mode, pg }: Props) {
   const [rooms, setRooms] = useState<RoomTypeEntry[]>(
     pg?.room_types?.length
       ? pg.room_types
-      : [{ type: "double", price: 0, ac: false, available: 0 }]
+      : [{ type: "double", price: 0, ac: false }]
   );
 
   const [amenities, setAmenities] = useState<Record<string, boolean>>(() => {
@@ -119,7 +119,7 @@ export default function PGForm({ mode, pg }: Props) {
   }
 
   function addRoom() {
-    setRooms((prev) => [...prev, { type: "single", price: 0, ac: false, available: 0 }]);
+    setRooms((prev) => [...prev, { type: "single", price: 0, ac: false }]);
   }
 
   function removeRoom(idx: number) {
@@ -293,7 +293,7 @@ export default function PGForm({ mode, pg }: Props) {
           {rooms.map((room, idx) => (
             <div
               key={idx}
-              className="grid grid-cols-2 gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:grid-cols-[1fr_1fr_auto_auto_auto]"
+              className="grid grid-cols-2 gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:grid-cols-[1fr_1fr_auto_auto]"
             >
               <label className="text-sm">
                 <span className="mb-1 block text-xs font-medium text-slate-600">Type</span>
@@ -319,17 +319,6 @@ export default function PGForm({ mode, pg }: Props) {
                   onChange={(e) => updateRoom(idx, { price: Number(e.target.value) || 0 })}
                   className={inputClass}
                   placeholder="140000"
-                />
-              </label>
-              <label className="text-sm">
-                <span className="mb-1 block text-xs font-medium text-slate-600">Available</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
-                  value={room.available}
-                  onChange={(e) => updateRoom(idx, { available: Number(e.target.value) || 0 })}
-                  className={`${inputClass} sm:w-24`}
                 />
               </label>
               <label className="flex items-end gap-2 pb-1.5 text-sm">

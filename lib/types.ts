@@ -5,7 +5,6 @@ export interface RoomTypeEntry {
   type: RoomType;
   price: number;
   ac: boolean;
-  available: number;
 }
 
 export interface Amenities {

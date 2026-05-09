@@ -172,9 +172,6 @@ export default async function PGDetail({
                 </div>
                 <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-slate-500">
                   <span>{r.ac ? "AC" : "Non-AC"}</span>
-                  <span className={r.available > 0 ? "text-emerald-600" : "text-red-500"}>
-                    {r.available > 0 ? `${r.available} available` : "Full"}
-                  </span>
                 </div>
               </div>
               <div className="text-right">
@@ -252,18 +249,6 @@ export default async function PGDetail({
                     <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
                       <span className="rounded-full bg-slate-100 px-2 py-0.5 font-medium text-slate-600">
                         {r.ac ? "AC" : "Non-AC"}
-                      </span>
-                      <span
-                        className={`inline-flex items-center gap-1 font-medium ${
-                          r.available > 0 ? "text-emerald-600" : "text-red-500"
-                        }`}
-                      >
-                        <span
-                          className={`h-1.5 w-1.5 rounded-full ${
-                            r.available > 0 ? "bg-emerald-500" : "bg-red-500"
-                          }`}
-                        />
-                        {r.available > 0 ? `${r.available} available` : "Full"}
                       </span>
                     </div>
                   </div>

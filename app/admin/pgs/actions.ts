@@ -64,11 +64,9 @@ function parseRoomTypes(raw: string): RoomTypeEntry[] | null {
     const type = row.type;
     const price = Number(row.price);
     const ac = Boolean(row.ac);
-    const available = Number(row.available);
     if (type !== "single" && type !== "double" && type !== "triple") return null;
     if (!Number.isFinite(price) || price < 0) return null;
-    if (!Number.isFinite(available) || available < 0) return null;
-    out.push({ type, price: Math.round(price), ac, available: Math.round(available) });
+    out.push({ type, price: Math.round(price), ac });
   }
   return out;
 }
