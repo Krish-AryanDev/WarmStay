@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import type { PG } from "@/lib/types";
+import PhotoGallery from "@/components/PhotoGallery";
 
 export const revalidate = 60;
 
@@ -85,50 +86,7 @@ export default async function PGDetail({
       </div>
 
       {/* PHOTOS */}
-      {pg.photos.length === 0 ? (
-        <div className="grid aspect-[16/9] place-items-center rounded-2xl bg-slate-100 text-slate-400">
-          No photos yet
-        </div>
-      ) : (
-        <>
-          {/* MOBILE: horizontal scroll (UNCHANGED) */}
-          <div className="scrollbar-hide -mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 sm:hidden">
-            {pg.photos.map((url, i) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                key={i}
-                src={url}
-                alt={`${pg.name} photo ${i + 1}`}
-                className="aspect-[4/3] w-[88%] flex-none snap-center rounded-2xl object-cover"
-              />
-            ))}
-          </div>
-
-          {/* DESKTOP: Airbnb-style hero gallery — 1 large + up to 4 thumbs */}
-          <div className="relative hidden h-[420px] grid-cols-4 grid-rows-2 gap-2 overflow-hidden rounded-2xl sm:grid lg:h-[480px]">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={pg.photos[0]}
-              alt={`${pg.name} photo 1`}
-              className="col-span-2 row-span-2 h-full w-full cursor-pointer object-cover transition hover:brightness-95"
-            />
-            {pg.photos.slice(1, 5).map((url, i) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                key={i}
-                src={url}
-                alt={`${pg.name} photo ${i + 2}`}
-                className="h-full w-full cursor-pointer object-cover transition hover:brightness-95"
-              />
-            ))}
-            {pg.photos.length > 5 && (
-              <div className="absolute bottom-4 right-4 rounded-full bg-white/95 px-4 py-2 text-sm font-semibold text-slate-900 shadow-md backdrop-blur">
-                + {pg.photos.length - 5} photos
-              </div>
-            )}
-          </div>
-        </>
-      )}
+      <PhotoGallery photos={pg.photos} pgName={pg.name} />
 
       {/* MOBILE-ONLY: header block (UNCHANGED) */}
       <div className="flex flex-col gap-4 sm:hidden">
