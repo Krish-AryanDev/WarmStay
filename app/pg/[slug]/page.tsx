@@ -78,7 +78,7 @@ export default async function PGDetail({
               {genderLabel(pg.gender)}
             </span>
             <span className="rounded-full bg-emerald-50 px-3 py-1.5 font-semibold text-emerald-700">
-              From ₹{pg.starting_price.toLocaleString("en-IN")}/mo
+              From ₹{pg.starting_price.toLocaleString("en-IN")}/yr
             </span>
           </div>
         </div>
@@ -143,7 +143,7 @@ export default async function PGDetail({
               {pg.gender === "both" ? "Co-living" : pg.gender}
             </span>
             <span className="rounded-full bg-emerald-50 px-2.5 py-1 font-semibold text-emerald-700">
-              From ₹{pg.starting_price.toLocaleString("en-IN")}/mo
+              From ₹{pg.starting_price.toLocaleString("en-IN")}/yr
             </span>
           </div>
         </div>
@@ -181,7 +181,7 @@ export default async function PGDetail({
                 <div className="text-base font-bold text-slate-900">
                   ₹{r.price.toLocaleString("en-IN")}
                 </div>
-                <div className="text-[11px] text-slate-500">/month</div>
+                <div className="text-[11px] text-slate-500">/year</div>
               </div>
             </div>
           ))}
@@ -271,7 +271,7 @@ export default async function PGDetail({
                     <div className="text-xl font-bold text-slate-900">
                       ₹{r.price.toLocaleString("en-IN")}
                     </div>
-                    <div className="text-[11px] text-slate-500">/month</div>
+                    <div className="text-[11px] text-slate-500">/year</div>
                   </div>
                 </div>
               ))}
@@ -305,7 +305,7 @@ export default async function PGDetail({
                 <span className="text-3xl font-bold text-slate-900">
                   ₹{pg.starting_price.toLocaleString("en-IN")}
                 </span>
-                <span className="text-sm text-slate-500">/ month</span>
+                <span className="text-sm text-slate-500">/ year</span>
               </div>
               <p className="mt-1 text-xs text-slate-500">
                 Starting price · final rent depends on room type

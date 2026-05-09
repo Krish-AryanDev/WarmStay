@@ -45,7 +45,7 @@ export default function PGCard({ pg }: { pg: PG }) {
             <div className="text-[11px] uppercase tracking-wide text-slate-500">Starting at</div>
             <div className="text-lg font-bold text-slate-900 sm:text-xl">
               ₹{pg.starting_price.toLocaleString("en-IN")}
-              <span className="text-xs font-normal text-slate-500">/mo</span>
+              <span className="text-xs font-normal text-slate-500">/yr</span>
             </div>
           </div>
           <span className="rounded-full bg-brand/10 px-3 py-1.5 text-xs font-semibold text-brand">

@@ -92,7 +92,7 @@ export default function InquiryForm({ pgId, pgSlug, pgName, ownerPhone }: Props)
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="Move-in date" name="move_in" type="date" />
         <Field
-          label="Monthly budget (₹)"
+          label="Yearly budget (₹)"
           name="budget"
           type="number"
           placeholder="9000"

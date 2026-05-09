@@ -7,7 +7,7 @@ interface Props {
 }
 
 export default async function AdminLoginPage({ searchParams }: Props) {
-  if (await isAdminAuthed()) redirect("/admin/inquiries");
+  if (await isAdminAuthed()) redirect("/admin/pgs");
   const { error } = await searchParams;
 
   return (

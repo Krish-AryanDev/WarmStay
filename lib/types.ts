@@ -17,6 +17,7 @@ export interface Amenities {
   ac?: boolean;
   ro_water?: boolean;
   warden?: boolean;
+  [key: string]: boolean | undefined;
 }
 
 export interface Inquiry {

@@ -24,7 +24,7 @@ export async function loginAdmin(formData: FormData): Promise<void> {
     maxAge: COOKIE_MAX_AGE
   });
 
-  redirect("/admin/inquiries");
+  redirect("/admin/pgs");
 }
 
 export async function logoutAdmin(): Promise<void> {

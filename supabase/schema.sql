@@ -66,3 +66,9 @@ drop policy if exists "anyone can submit inquiry" on inquiries;
 create policy "anyone can submit inquiry"
   on inquiries for insert
   with check (true);
+
+-- Storage bucket for PG photos. Public read so URLs returned by getPublicUrl() are
+-- usable directly in <img>; writes happen only via the server-side service role key.
+insert into storage.buckets (id, name, public)
+values ('pg-photos', 'pg-photos', true)
+on conflict (id) do nothing;

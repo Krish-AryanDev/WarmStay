@@ -15,15 +15,21 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <div className="-mx-4 -mb-6 -mt-2 min-h-[calc(100vh-9rem)] bg-slate-50 px-4 py-6 sm:-mx-6 sm:-mb-8 sm:-mt-3 sm:px-6 sm:py-8">
       <div className="mx-auto max-w-6xl">
-        <div className="mb-5 flex items-center justify-between">
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-brand">
               HappyStay Admin
             </p>
-            <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">Inquiry tracker</h1>
+            <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">Dashboard</h1>
           </div>
           {authed && (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <Link
+                href="/admin/pgs"
+                className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:border-brand hover:text-brand sm:text-sm"
+              >
+                PGs
+              </Link>
               <Link
                 href="/admin/inquiries"
                 className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:border-brand hover:text-brand sm:text-sm"

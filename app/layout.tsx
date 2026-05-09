@@ -38,7 +38,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </Link>
             <nav>
               <a
-                href="https://wa.me/"
+                href={`https://wa.me/${process.env.NEXT_PUBLIC_ADMIN_WHATSAPP ?? ""}?text=${encodeURIComponent(
+                  "Hi! I'd like to list my PG on HappyStay."
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="inline-flex items-center rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:border-brand hover:text-brand sm:px-4 sm:py-2 sm:text-sm"
                 aria-label="List your PG"
               >

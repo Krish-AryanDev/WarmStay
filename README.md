@@ -17,9 +17,15 @@ A student-focused PG listing site for Manipal University Jaipur. Browse verified
 - **Lead persistence** — inquiry is written to the Supabase `inquiries` table *before* WhatsApp opens, so the lead is never lost even if the redirect fails
 - **WhatsApp redirect** — on submit, WhatsApp opens with a pre-filled message to the admin's number (`NEXT_PUBLIC_ADMIN_WHATSAPP`)
 
+### Admin panel
+- **Passcode-gated `/admin`** — single shared `ADMIN_PASSCODE`, server-only cookie, no third-party auth dependency
+- **PG management** (`/admin/pgs`) — list, create, edit, publish/unpublish, delete; photo uploads go straight to Supabase Storage (`pg-photos` bucket)
+- **Inquiry tracker** (`/admin/inquiries`) — pending/handled filter with one-tap toggle and stat cards
+
 ### Backend & infra
 - **Supabase Postgres** — `pgs` table (JSONB amenities + room types, photo URL array) and `inquiries` table with RLS policies and indexes
-- **ISR** — homepage and detail pages revalidate every 60 seconds; no full-page rebuilds needed
+- **Supabase Storage** — `pg-photos` public-read bucket; admin writes via service-role key, public reads via the returned URL
+- **ISR** — homepage and detail pages revalidate every 60 seconds; admin actions also call `revalidatePath` for instant updates
 - **Seed data** — `supabase/seed.sql` inserts 3 sample PGs so you can test locally immediately
 
 ---
@@ -30,15 +36,13 @@ These features are specced in `WorkFlow.md` and deferred intentionally for Phase
 
 | Feature | Why deferred |
 |---|---|
-| **Phone OTP auth (3 roles: admin / owner / student)** | No PGs to manage yet — auth complexity would block launch |
+| **Phone OTP auth (3 roles: admin / owner / student)** | Single shared passcode is enough at this scale — auth complexity would block launch |
 | **Student dashboard** (`/student/dashboard`) | Students don't need an account to browse or inquire in Phase 1 |
-| **Owner dashboard** (`/owner/dashboard` + `/owner/inquiries`) | Admin handles everything in Supabase Studio at ≤10 PGs |
-| **Admin UI** (`/admin/dashboard`, `/admin/pgs`, `/admin/owners`) | Supabase Studio is sufficient; build when scale demands it |
+| **Owner dashboard** (`/owner/dashboard` + `/owner/inquiries`) | Admin handles everything via `/admin` at ≤10 PGs |
 | **WhatsApp Business API + auto-reply flow** | Single admin recipient — `wa.me` deep link is sufficient; Business API needed in Phase 2 when routing to individual owners |
 | **Inquiry status tracking** (`new → checking → available → booked`) | No owner/student accounts to surface status to yet |
 | **Multi-city routing** (`/[city]/[slug]`) | Hardcoded to MUJ for now; refactor when launching Kota |
 | **Normalized DB schema** (separate `room_types`, `pg_photos`, `amenities` tables) | Single `pgs` table + JSONB works at current scale; normalize when needed |
-| **Supabase Storage image uploads** | Photos are currently pasted HTTPS URLs; replace with Storage when building the admin form |
 | **Razorpay payments** | No paid listings in Phase 1 |
 | **SEO** (per-PG meta tags, sitemap, `LocalBusiness` structured data) | Phase 2 once content volume justifies it |
 
@@ -108,20 +112,14 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Adding a new PG (admin workflow)
 
-Use **Supabase Studio → Table Editor → `pgs` → Insert row**:
+Sign in at `/admin/login` with `ADMIN_PASSCODE`, then go to `/admin/pgs → Add new PG`. The form covers everything: basics, location, gender, pricing, owner contact, room types, amenities, and photo uploads.
 
-| Column | Notes |
-|---|---|
-| `slug` | URL-friendly, unique (e.g. `sharma-pg`) |
-| `name`, `description`, `address`, `area` | Display text |
-| `distance_km` | Distance from MUJ campus (number) |
-| `gender` | `boys` / `girls` / `both` |
-| `starting_price` | Lowest monthly rent (integer ₹) |
-| `owner_name`, `owner_phone` | Phone in international format, e.g. `919876543210` |
-| `amenities` | JSON object — `{"wifi":true,"food":true,"ac":false,...}` |
-| `room_types` | JSON array — `[{"type":"double","price":7500,"ac":false,"available":4}]` |
-| `photos` | JSON array of HTTPS image URLs |
-| `is_active` | `true` to publish |
+- **Photos** are uploaded straight to the `pg-photos` Supabase Storage bucket. The first photo is the cover; reorder with the arrows on hover.
+- **Slug** auto-generates from the PG name; edit it if you need a custom one.
+- **Publish** toggle controls `is_active` — unpublished PGs stay hidden from the public site but remain in the admin list.
+- **Edit / Delete** are available per row. Delete also removes the PG's photos from Storage.
+
+Studio is still useful for ad-hoc fixes, but you should not need it for normal onboarding.
 
 ---
 
@@ -145,15 +143,29 @@ app/
   inquiry/[slug]/
     page.tsx                # inquiry page shell
     InquiryForm.tsx         # form + Supabase insert + WhatsApp redirect
+  admin/
+    layout.tsx              # admin shell (nav, sign-out)
+    actions.ts              # login / logout / inquiry toggle (server actions)
+    login/page.tsx          # passcode form
+    inquiries/page.tsx      # inquiry tracker
+    pgs/
+      page.tsx              # PG list (publish toggle, edit, delete)
+      actions.ts            # PG CRUD + photo upload server actions
+      PGForm.tsx            # shared create/edit form (client component)
+      DeleteButton.tsx      # confirm-before-delete client wrapper
+      new/page.tsx          # create PG
+      [id]/edit/page.tsx    # edit PG
 components/
   PGCard.tsx                # listing card (photo, name, area, price)
   Filters.tsx               # URL-driven gender / price / room filters
 lib/
-  supabase.ts               # Supabase client
-  types.ts                  # PG, RoomType, Amenities types
+  supabase.ts               # public Supabase client (anon)
+  supabase-admin.ts         # server-only Supabase client (service role)
+  admin-session.ts          # passcode + cookie helpers
+  types.ts                  # PG, RoomType, Amenities, Inquiry types
   whatsapp.ts               # wa.me link builder (Phase 1/2 switch is commented inside)
 supabase/
-  schema.sql                # tables, indexes, RLS policies
+  schema.sql                # tables, indexes, RLS policies, Storage bucket
   seed.sql                  # 3 sample PGs
 ```
 
@@ -161,10 +173,9 @@ supabase/
 
 ## Phase 2 roadmap (rough order of value)
 
-1. Supabase Storage image uploads in an admin form (replace pasted URLs)
-2. Owner dashboard with phone OTP login — build when 5+ owners ask for it
-3. Route WhatsApp to `pg.owner_phone` — see `lib/whatsapp.ts`, the one-line switch is already commented
-4. Multi-city URLs when launching a second campus — add `city_slug` column, rename route to `/[city]/[slug]`
-5. Inquiry status flow (new → checking → available/not-available → booked) + student notifications
-6. Razorpay for listing fees (₹3k peak / ₹299 off-season)
-7. SEO — per-PG meta tags, sitemap, `LocalBusiness` structured data
+1. Owner dashboard with phone OTP login — build when 5+ owners ask for it
+2. Route WhatsApp to `pg.owner_phone` — see `lib/whatsapp.ts`, the one-line switch is already commented
+3. Multi-city URLs when launching a second campus — add `city_slug` column, rename route to `/[city]/[slug]`
+4. Inquiry status flow (new → checking → available/not-available → booked) + student notifications
+5. Razorpay for listing fees (₹3k peak / ₹299 off-season)
+6. SEO — per-PG meta tags, sitemap, `LocalBusiness` structured data
