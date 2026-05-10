@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -33,6 +34,60 @@ const amenityLabel: Record<string, string> = {
 
 const genderLabel = (g: string) =>
   g === "both" ? "Co-living" : g === "boys" ? "Boys" : "Girls";
+
+export async function generateMetadata({
+  params
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const pg = await fetchPG(slug);
+  if (!pg) {
+    return {
+      title: "PG not found",
+      robots: { index: false, follow: false }
+    };
+  }
+
+  const titleParts = [pg.name];
+  if (pg.area) titleParts.push(pg.area);
+  titleParts.push("near MUJ Jaipur");
+  const title = titleParts.join(" – ");
+
+  const summaryBits = [
+    `${genderLabel(pg.gender)} PG`,
+    pg.distance_km != null ? `${pg.distance_km} km from MUJ` : null,
+    `from ₹${pg.starting_price.toLocaleString("en-IN")}/yr`
+  ].filter(Boolean);
+
+  const baseDescription = pg.description?.trim();
+  const description = baseDescription
+    ? `${summaryBits.join(" · ")}. ${baseDescription}`.slice(0, 200)
+    : `${summaryBits.join(" · ")}. View photos, amenities, and inquire on WhatsApp.`;
+
+  const cover = pg.photos?.[0];
+  const url = `/pg/${pg.slug}`;
+
+  return {
+    title,
+    description,
+    alternates: { canonical: url },
+    openGraph: {
+      type: "website",
+      title,
+      description,
+      url,
+      siteName: "WarmStay",
+      ...(cover ? { images: [{ url: cover, alt: pg.name, width: 1200, height: 630 }] } : {})
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      ...(cover ? { images: [cover] } : {})
+    }
+  };
+}
 
 export default async function PGDetail({
   params
@@ -295,7 +350,7 @@ export default async function PGDetail({
                 <ShieldIcon className="h-4 w-4 text-emerald-600" />
                 Verified listing
               </div>
-              Visited and verified by the HappyStay team. Real photos, no surprises.
+              Visited and verified by the WarmStay team. Real photos, no surprises.
             </div>
           </div>
         </aside>

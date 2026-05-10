@@ -68,7 +68,7 @@ export default async function HomePage({
           </div>
           <div className="relative px-5 py-10 text-center">
             <h1 className="text-2xl font-bold leading-tight tracking-tight">
-              Book with HappyStay
+              Book with WarmStay
             </h1>
             <p className="mx-auto mt-3 max-w-xl text-sm text-white/90">
               Verified listings · real photos · WhatsApp inquiry in one tap.
@@ -93,7 +93,7 @@ export default async function HomePage({
           </div>
           <div className="relative z-10 mb-6 max-w-3xl">
             <h1 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
-              Book your Hostel with HappyStay
+              Book your Hostel with WarmStay
             </h1>
             <p className="mt-3 text-sm text-white/90 sm:text-base lg:text-lg">
               Verified listings, real photos, transparent pricing. Inquire on WhatsApp in one click.

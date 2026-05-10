@@ -1,4 +1,4 @@
-# HappyStay — PG Finder near MUJ Jaipur
+# WarmStay — PG Finder near MUJ Jaipur
 
 A student-focused PG listing site for Manipal University Jaipur. Browse verified hostels, view real photos and transparent pricing, and inquire directly via WhatsApp in one click.
 
@@ -128,7 +128,7 @@ Studio is still useful for ad-hoc fixes, but you should not need it for normal o
 1. Push this repo to GitHub.
 2. [vercel.com](https://vercel.com) → New Project → import the repo.
 3. Add the same 3 env vars under **Settings → Environment Variables**.
-4. Deploy. Point your domain (e.g. `happystay.in`) at it.
+4. Deploy. Point your domain (e.g. `warmstay.in`) at it.
 
 ---
 

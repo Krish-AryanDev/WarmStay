@@ -3,7 +3,7 @@ import { isAdminAuthed } from "@/lib/admin-session";
 import { logoutAdmin } from "./actions";
 
 export const metadata = {
-  title: "Admin – HappyStay",
+  title: "Admin – WarmStay",
   robots: { index: false, follow: false }
 };
 
@@ -18,7 +18,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-brand">
-              HappyStay Admin
+              WarmStay Admin
             </p>
             <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">Dashboard</h1>
           </div>
