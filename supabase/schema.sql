@@ -19,12 +19,14 @@ create table if not exists pgs (
   room_types    jsonb not null default '[]'::jsonb,
   photos        jsonb not null default '[]'::jsonb,
   videos        jsonb not null default '[]'::jsonb,
+  links         jsonb not null default '[]'::jsonb,
   is_active     boolean not null default true,
   created_at    timestamptz not null default now()
 );
 
 -- Migration for existing deployments (safe to re-run).
 alter table pgs add column if not exists videos jsonb not null default '[]'::jsonb;
+alter table pgs add column if not exists links  jsonb not null default '[]'::jsonb;
 
 create index if not exists pgs_active_idx on pgs (is_active);
 create index if not exists pgs_gender_idx on pgs (gender);

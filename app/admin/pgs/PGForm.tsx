@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
-import type { PG, RoomType, RoomTypeEntry } from "@/lib/types";
+import type { PG, PgLink, RoomType, RoomTypeEntry } from "@/lib/types";
 import { supabase } from "@/lib/supabase";
 import {
   createPg,
@@ -68,6 +68,8 @@ export default function PGForm({ mode, pg }: Props) {
   const [videoError, setVideoError] = useState<string | null>(null);
   const [videoProgress, setVideoProgress] = useState<number | null>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
+
+  const [links, setLinks] = useState<PgLink[]>(pg?.links ?? []);
 
   const [rooms, setRooms] = useState<RoomTypeEntry[]>(
     pg?.room_types?.length
@@ -175,6 +177,18 @@ export default function PGForm({ mode, pg }: Props) {
     });
   }
 
+  function addLink() {
+    setLinks((prev) => (prev.length >= 10 ? prev : [...prev, { url: "" }]));
+  }
+
+  function updateLink(idx: number, patch: Partial<PgLink>) {
+    setLinks((prev) => prev.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
+  }
+
+  function removeLink(idx: number) {
+    setLinks((prev) => prev.filter((_, i) => i !== idx));
+  }
+
   function updateRoom(idx: number, patch: Partial<RoomTypeEntry>) {
     setRooms((prev) => prev.map((r, i) => (i === idx ? { ...r, ...patch } : r)));
   }
@@ -204,6 +218,7 @@ export default function PGForm({ mode, pg }: Props) {
       {pg && <input type="hidden" name="id" value={pg.id} />}
       <input type="hidden" name="photos" value={JSON.stringify(photos)} />
       <input type="hidden" name="videos" value={JSON.stringify(videos)} />
+      <input type="hidden" name="links" value={JSON.stringify(links)} />
       <input type="hidden" name="room_types" value={JSON.stringify(rooms)} />
       <input type="hidden" name="custom_amenities" value={JSON.stringify(customAmenities)} />
 
@@ -617,6 +632,65 @@ export default function PGForm({ mode, pg }: Props) {
           </label>
         </div>
         {videoError && <p className="mt-2 text-sm text-red-600">{videoError}</p>}
+      </Section>
+
+      {/* Links */}
+      <Section title="Links" fullWidth>
+        <p className="mb-3 text-xs text-slate-500">
+          Instagram, YouTube tour, Google Maps location, owner website, etc. Platform name is
+          auto-detected from the URL; optionally override with a custom label. Up to 10 links.
+        </p>
+        <div className="space-y-2">
+          {links.map((link, idx) => (
+            <div
+              key={idx}
+              className="grid grid-cols-1 gap-2 rounded-2xl border border-slate-200 bg-white p-3 sm:grid-cols-[1fr_220px_auto]"
+            >
+              <label className="text-sm">
+                <span className="mb-1 block text-xs font-medium text-slate-600">URL</span>
+                <input
+                  type="url"
+                  value={link.url}
+                  onChange={(e) => updateLink(idx, { url: e.target.value })}
+                  placeholder="https://instagram.com/your-pg"
+                  className={inputClass}
+                  inputMode="url"
+                />
+              </label>
+              <label className="text-sm">
+                <span className="mb-1 block text-xs font-medium text-slate-600">
+                  Label <span className="text-slate-400">(optional)</span>
+                </span>
+                <input
+                  type="text"
+                  value={link.label ?? ""}
+                  onChange={(e) => updateLink(idx, { label: e.target.value })}
+                  placeholder="e.g. Watch tour"
+                  maxLength={30}
+                  className={inputClass}
+                />
+              </label>
+              <div className="flex items-end justify-end pb-1">
+                <button
+                  type="button"
+                  onClick={() => removeLink(idx)}
+                  className="rounded-lg border border-slate-200 px-2.5 py-2 text-xs text-slate-600 hover:border-red-200 hover:text-red-600"
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+          ))}
+
+          <button
+            type="button"
+            onClick={addLink}
+            disabled={links.length >= 10}
+            className="w-full rounded-xl border border-dashed border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-600 hover:border-brand hover:text-brand disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            + Add link
+          </button>
+        </div>
       </Section>
 
       {/* Publish toggle + submit */}

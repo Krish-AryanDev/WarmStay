@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { isAdminAuthed } from "@/lib/admin-session";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import type { Amenities, Gender, RoomTypeEntry } from "@/lib/types";
+import type { Amenities, Gender, PgLink, RoomTypeEntry } from "@/lib/types";
 
 const PHOTO_BUCKET = "pg-photos";
 const VIDEO_BUCKET = "pg-videos";
@@ -74,6 +74,43 @@ function parseRoomTypes(raw: string): RoomTypeEntry[] | null {
     if (type !== "single" && type !== "double" && type !== "triple") return null;
     if (!Number.isFinite(price) || price < 0) return null;
     out.push({ type, price: Math.round(price), ac });
+  }
+  return out;
+}
+
+function parseLinks(raw: string): PgLink[] | null {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (!Array.isArray(parsed)) return null;
+
+  const out: PgLink[] = [];
+  const seen = new Set<string>();
+  for (const item of parsed) {
+    if (!item || typeof item !== "object") continue;
+    const row = item as Record<string, unknown>;
+    const rawUrl = typeof row.url === "string" ? row.url.trim() : "";
+    if (!rawUrl) continue;
+
+    let normalized: string;
+    try {
+      const u = new URL(rawUrl);
+      if (u.protocol !== "http:" && u.protocol !== "https:") continue;
+      normalized = u.toString();
+    } catch {
+      continue;
+    }
+
+    if (seen.has(normalized)) continue;
+    seen.add(normalized);
+
+    const labelRaw = typeof row.label === "string" ? row.label.trim().slice(0, 30) : "";
+    out.push(labelRaw ? { url: normalized, label: labelRaw } : { url: normalized });
+
+    if (out.length >= 10) break;
   }
   return out;
 }
@@ -182,6 +219,9 @@ function buildPgPayload(form: FormData): { payload: Record<string, unknown> | nu
   const videos = parseUrlList(String(form.get("videos") ?? "[]"));
   if (!videos) return { payload: null, error: "Video list is malformed." };
 
+  const links = parseLinks(String(form.get("links") ?? "[]"));
+  if (!links) return { payload: null, error: "Link list is malformed." };
+
   const amenities = readAmenities(form);
   const is_active = form.get("is_active") === "on";
 
@@ -201,6 +241,7 @@ function buildPgPayload(form: FormData): { payload: Record<string, unknown> | nu
       room_types,
       photos,
       videos,
+      links,
       is_active
     }
   };

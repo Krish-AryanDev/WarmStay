@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import type { PG } from "@/lib/types";
 import PhotoGallery from "@/components/PhotoGallery";
+import { resolveLink, type LinkKind, type ResolvedLink } from "@/lib/pg-links";
 
 export const revalidate = 60;
 
@@ -102,6 +103,10 @@ export default async function PGDetail({
     .filter(([, v]) => v === true)
     .map(([k]) => k);
 
+  const resolvedLinks: ResolvedLink[] = (pg.links ?? [])
+    .map(resolveLink)
+    .filter((l): l is ResolvedLink => l !== null);
+
   return (
     <article className="space-y-6 pb-24 sm:space-y-6 sm:pb-8">
       <Link
@@ -142,6 +147,24 @@ export default async function PGDetail({
 
       {/* PHOTOS + VIDEOS */}
       <PhotoGallery photos={pg.photos} videos={pg.videos ?? []} pgName={pg.name} />
+
+      {/* LINKS — Instagram, YouTube, Maps, etc. */}
+      {resolvedLinks.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {resolvedLinks.map((link, i) => (
+            <a
+              key={i}
+              href={link.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-brand hover:text-brand"
+            >
+              <LinkIcon kind={link.kind} />
+              <span>{link.label}</span>
+            </a>
+          ))}
+        </div>
+      )}
 
       {/* MOBILE-ONLY: header block (UNCHANGED) */}
       <div className="flex flex-col gap-4 sm:hidden">
@@ -493,6 +516,69 @@ function ShieldIcon({ className }: { className?: string }) {
       />
     </svg>
   );
+}
+
+function LinkIcon({ kind }: { kind: LinkKind }) {
+  const common = {
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.8,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    className: "h-4 w-4 shrink-0",
+    viewBox: "0 0 24 24"
+  };
+
+  switch (kind) {
+    case "instagram":
+      return (
+        <svg {...common}>
+          <rect x="3" y="3" width="18" height="18" rx="5" />
+          <circle cx="12" cy="12" r="4" />
+          <circle cx="17.5" cy="6.5" r="0.6" fill="currentColor" stroke="none" />
+        </svg>
+      );
+    case "youtube":
+      return (
+        <svg {...common}>
+          <path d="M21.6 7.2a2.7 2.7 0 0 0-1.9-1.9C18 5 12 5 12 5s-6 0-7.7.3A2.7 2.7 0 0 0 2.4 7.2C2.1 8.9 2.1 12 2.1 12s0 3.1.3 4.8a2.7 2.7 0 0 0 1.9 1.9C6 19 12 19 12 19s6 0 7.7-.3a2.7 2.7 0 0 0 1.9-1.9c.3-1.7.3-4.8.3-4.8s0-3.1-.3-4.8Z" />
+          <path d="m10 9.5 5 2.5-5 2.5Z" fill="currentColor" stroke="none" />
+        </svg>
+      );
+    case "facebook":
+      return (
+        <svg {...common}>
+          <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3Z" />
+        </svg>
+      );
+    case "maps":
+      return (
+        <svg {...common}>
+          <path d="M12 21s7-6.5 7-12a7 7 0 1 0-14 0c0 5.5 7 12 7 12Z" />
+          <circle cx="12" cy="9" r="2.5" />
+        </svg>
+      );
+    case "twitter":
+      return (
+        <svg {...common}>
+          <path d="M4 4l7.5 9.5L4.5 20H7l5.5-5.8L17 20h3L12 10l7.5-6H17l-4.5 4.8L8 4Z" fill="currentColor" stroke="none" />
+        </svg>
+      );
+    case "whatsapp":
+      return (
+        <svg {...common}>
+          <path d="M21 12a9 9 0 0 1-13.5 7.8L3 21l1.3-4.4A9 9 0 1 1 21 12Z" />
+          <path d="M8.5 9c.3-.5 1-1 1.7-1 .5 0 .8.2 1 .6l.6 1.4c.2.4 0 .7-.3 1l-.5.5c.7 1.3 1.6 2.2 2.9 2.9l.5-.5c.3-.3.6-.5 1-.3l1.4.6c.4.2.6.5.6 1 0 .7-.5 1.4-1 1.7-1.7 1-5.7-1-7.5-3.4Z" />
+        </svg>
+      );
+    default:
+      return (
+        <svg {...common}>
+          <path d="M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1.5 1.5" />
+          <path d="M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1.5-1.5" />
+        </svg>
+      );
+  }
 }
 
 function AmenityIcon({ name }: { name: string }) {

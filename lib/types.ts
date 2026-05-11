@@ -7,6 +7,11 @@ export interface RoomTypeEntry {
   ac: boolean;
 }
 
+export interface PgLink {
+  url: string;
+  label?: string;
+}
+
 export interface Amenities {
   wifi?: boolean;
   food?: boolean;
@@ -50,6 +55,7 @@ export interface PG {
   room_types: RoomTypeEntry[];
   photos: string[];
   videos: string[];
+  links: PgLink[];
   is_active: boolean;
   created_at: string;
 }
